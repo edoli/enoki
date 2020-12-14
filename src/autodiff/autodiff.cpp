@@ -116,7 +116,10 @@ struct Variable {
     uint64_t ref_count_ext : 26;
 
     /// Gradient reference count for special operations
-    uint64_t ref_count_grad : 10;
+    uint64_t ref_count_grad : 9;
+
+    /// Was this variable marked as an output in symbolic mode?
+    uint64_t output_flag : 1;
 
     /// Was the label manually overwritten via set_label()?
     uint64_t custom_label : 1;
@@ -170,6 +173,22 @@ struct Variable {
                 else
                     grad = std::move(v2);
             } else {
+                if constexpr (is_jit_array_v<T>) {
+                    /* While recording derivative code symbolically, turn
+                       gradient updates involving pre-allocated memory regions into
+                       scatters. Non-evaluated arrays that aren't explicitly marked
+                       as an output trigger an error. */
+                    if (next_rev == 0 && !output_flag &&
+                        jitc_mode() == JitMode::SymbolicRequired) {
+                        if (!((const T &) grad).data())
+                            ad_fail("Output gradient array (%u) must be "
+                                    "pre-allocated before recording derivative "
+                                    "code.", ((const T &) grad).index());
+                        scatter_add(grad, v, uint32_array_t<T>(0), neq(v, 0.f));
+                        return;
+                    }
+                }
+
                 if (((const T &) grad).valid())
                     grad += v;
                 else
@@ -196,6 +215,22 @@ struct Variable {
                 else
                     grad = std::move(v3);
             } else {
+                if constexpr (is_jit_array_v<T>) {
+                    /* While recording derivative code symbolically, turn
+                       gradient updates involving pre-allocated memory regions into
+                       scatters. Non-evaluated arrays that aren't explicitly marked
+                       as an output trigger an error. */
+                    if (next_rev == 0 && !output_flag &&
+                        jitc_mode() == JitMode::SymbolicRequired) {
+                        if (!((const T &) grad).data())
+                            ad_fail("Output gradient array (%u) must be "
+                                    "pre-allocated before recording derivative "
+                                    "code.", ((const T &) grad).index());
+                        scatter_add(grad, v1 * v2, uint32_array_t<T>(0), neq(v1, 0));
+                        return;
+                    }
+                }
+
                 if (((const T &) grad).valid())
                     grad = fmaddz(v1, v2, grad);
                 else
@@ -1150,6 +1185,11 @@ template <typename T> const char *ad_label(int32_t index) {
     return state[index]->label;
 }
 
+template <typename T> void ad_set_output_flag(int32_t index) {
+    std::lock_guard<std::mutex> guard(state.mutex);
+    state[index]->output_flag = 1;
+}
+
 template <typename T>
 void ad_add_edge(int32_t source_idx, int32_t target_idx,
                  DiffCallback *callback) {
@@ -1213,6 +1253,7 @@ ad_new_scatter<Value, Mask, Index>(const char *, uint32_t, int32_t, int32_t,
                                    const Index &, const Mask &, bool, bool);
 template ENOKI_EXPORT void ad_add_edge<Value>(int32_t, int32_t,
                                               DiffCallback *);
+template ENOKI_EXPORT void ad_set_output_flag<Value>(int32_t);
 
 NAMESPACE_END(detail)
 

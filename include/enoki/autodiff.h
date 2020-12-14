@@ -97,6 +97,9 @@ template <typename Value>
 void ad_add_edge(int32_t src_index, int32_t dst_index,
                  DiffCallback *callback = nullptr);
 
+/// Mark a variable as an output of a symbolic differentiation step
+template <typename Value> void ad_set_output_flag(int32_t index);
+
 //! @}
 // -----------------------------------------------------------------------
 
@@ -1498,6 +1501,10 @@ struct DiffArray : ArrayBase<value_t<Type_>, is_mask_v<Type_>, DiffArray<Type_>>
     //! @{ \name Standard initializers
     // -----------------------------------------------------------------------
 
+    DiffArray placeholder_() const {
+        return enoki::placeholder<Type>(m_value);
+    }
+
     static DiffArray empty_(size_t size) {
         return enoki::empty<Type>(size);
     }
@@ -1655,6 +1662,10 @@ struct DiffArray : ArrayBase<value_t<Type_>, is_mask_v<Type_>, DiffArray<Type_>>
         return m_value;
     }
 
+    void set_output_flag_() {
+        enoki::detail::ad_set_output_flag<Type>(m_index);
+    }
+
     Type &detach_() {
         return m_value;
     }
@@ -1798,6 +1809,7 @@ protected:
                                    const Index &, const Mask &, bool, bool);   \
     extern template ENOKI_AUTODIFF_EXPORT void ad_add_edge<T>(int32_t,         \
             int32_t, DiffCallback*);                                           \
+    extern template ENOKI_AUTODIFF_EXPORT void ad_set_output_flag<T>(int32_t); \
     }
 
 ENOKI_DECLARE_EXTERN_TEMPLATE(float,  bool, uint32_t)
