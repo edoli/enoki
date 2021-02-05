@@ -806,8 +806,8 @@ py::class_<Array> bind(py::module &m, py::module &s, const char *name) {
         m.def("round",      [](const Array &a) { return enoki::round(a); });
         m.def("trunc",      [](const Array &a) { return enoki::trunc(a); });
 
-        m.def("ceil2int",   [](const Array &a) { return enoki::ceil2int(a); });
-        m.def("floor2int",  [](const Array &a) { return enoki::floor2int(a); });
+        m.def("ceil2int",   [](const Array &a) { return enoki::ceil2int<int_array_t<Array>>(a); });
+        m.def("floor2int",  [](const Array &a) { return enoki::floor2int<int_array_t<Array>>(a); });
 
         m.def("sign",         [](const Array &a) { return enoki::sign(a); });
         m.def("copysign",     [](const Array &a, const Array &b) { return enoki::copysign(a, b); });

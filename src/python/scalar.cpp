@@ -67,8 +67,8 @@ PYBIND11_MODULE(scalar, s) {
     m.def("round", [](Float a) { return enoki::round(a); });
     m.def("trunc", [](Float a) { return enoki::trunc(a); });
 
-    m.def("ceil2int",  [](Float a) { return enoki::ceil2int(a); });
-    m.def("floor2int", [](Float a) { return enoki::floor2int(a); });
+    m.def("ceil2int", [](Float a) { return enoki::ceil2int<int_array_t<Float>>(a); });
+    m.def("floor2int", [](Float a) { return enoki::floor2int<int_array_t<Float>>(a); });
 
     m.def("sign",         [](Float a) { return enoki::sign(a); });
     m.def("copysign",     [](Float a, Float b) { return enoki::copysign(a, b); });
