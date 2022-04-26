@@ -593,6 +593,16 @@ struct struct_support<Matrix<T, Size>,
         return gradient(value, std::make_index_sequence<Size>());
     }
 
+    template <typename Dst, typename Index, typename Mask>
+    static ENOKI_INLINE void scatter(Dst &dst, const Matrix<T, Size> &value, const Index &index, const Mask &mask) {
+        scatter(dst, value, index, mask, std::make_index_sequence<Size>());
+    }
+
+    template <typename Dst, typename Index, typename Mask>
+    static ENOKI_INLINE void scatter_add(Dst &dst, const Matrix<T, Size> &value, const Index &index, const Mask &mask) {
+        scatter_add(dst, value, index, mask, std::make_index_sequence<Size>());
+    }
+
     static ENOKI_INLINE Value zero(size_t size) {
         return Value::zero_(size);
     }
@@ -601,18 +611,17 @@ struct struct_support<Matrix<T, Size>,
         return Value::empty_(size);
     }
 
-    template <typename T2, typename Mask,
-              enable_if_t<array_size<T2>::value == array_size<Mask>::value> = 0>
+    template <typename T2, typename Mask>
     static ENOKI_INLINE auto masked(T2 &value, const Mask &mask) {
         return detail::MaskedArray<T2>{ value, mask_t<T2>(mask) };
     }
 
-    template <typename T2, typename Mask,
-              enable_if_t<array_size<T2>::value != array_size<Mask>::value> = 0>
-    static ENOKI_INLINE auto masked(T2 &value, const Mask &mask) {
-        using Arr = Array<Array<T, Size>, Size>;
-        return enoki::masked((Arr&) value, mask_t<Arr>(mask));
-    }
+    //template <typename T2, typename Mask,
+    //          enable_if_t<array_size<T2>::value != array_size<Mask>::value> = 0>
+    //static ENOKI_INLINE auto masked(T2 &value, const Mask &mask) {
+    //    using Arr = Array<Array<T, Size>, Size>;
+    //    return enoki::masked((Arr&) value, mask_t<Arr>(mask));
+    //}
 
 private:
     template <typename T2, size_t... Index>
@@ -649,6 +658,20 @@ private:
     static ENOKI_INLINE auto gradient(T2&& value, std::index_sequence<Index...>) {
         return Matrix<decltype(enoki::gradient(value.coeff(0, 0))), Size>(
             enoki::gradient(value.coeff(Index))...);
+    }
+
+    template <typename Dst, typename Index, typename Mask, size_t... Is>
+    static ENOKI_INLINE void scatter(Dst &src, const Matrix<T, Size> &value, const Index &index,
+                                     const Mask &mask, std::index_sequence<Is...>) {
+        bool unused[] = { (enoki::scatter(src.coeff(Is), value.coeff(Is), index, mask), false) ... , false };
+        ENOKI_MARK_USED(unused);
+    }
+
+    template <typename Dst, typename Index, typename Mask, size_t... Is>
+    static ENOKI_INLINE void scatter_add(Dst &src, const Matrix<T, Size> &value, const Index &index,
+                                     const Mask &mask, std::index_sequence<Is...>) {
+        bool unused[] = { (enoki::scatter_add(src.coeff(Is), value.coeff(Is), index, mask), false) ... , false };
+        ENOKI_MARK_USED(unused);
     }
 };
 
